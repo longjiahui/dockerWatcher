@@ -1,3 +1,5 @@
+import type { AnsiStyle } from "./ansi";
+import { isStyled, parseAnsi } from "./ansi";
 import type { Container, DockerStatus, LogLine } from "./types";
 
 export interface UiHandlers {
@@ -162,6 +164,17 @@ function formatTs(ts: string | null): string {
   return ts.length > 24 ? ts.slice(0, 24) : ts;
 }
 
+/** Paint one parsed run: everything the program asked for, on top of the pane's own colours. */
+function applyAnsiStyle(element: HTMLElement, style: AnsiStyle): void {
+  if (!isStyled(style)) return;
+  if (style.fg) element.style.color = style.fg;
+  if (style.bg) element.style.backgroundColor = style.bg;
+  if (style.bold) element.style.fontWeight = "600";
+  if (style.dim) element.style.opacity = "0.7";
+  if (style.italic) element.style.fontStyle = "italic";
+  if (style.underline) element.style.textDecoration = "underline";
+}
+
 function buildLogLine(line: LogLine): HTMLElement {
   const element = document.createElement("div");
   element.className = `log-line ${line.stream}`;
@@ -174,7 +187,19 @@ function buildLogLine(line: LogLine): HTMLElement {
 
   const text = document.createElement("span");
   text.className = "log-text";
-  text.textContent = line.text;
+  const runs = parseAnsi(line.text);
+  // Plain lines (no escape sequences) stay a single text node — the common case should not
+  // pay for a child span per line.
+  if (runs.length === 1 && !isStyled(runs[0].style)) {
+    text.textContent = runs[0].text;
+  } else {
+    for (const run of runs) {
+      const piece = document.createElement("span");
+      piece.textContent = run.text;
+      applyAnsiStyle(piece, run.style);
+      text.append(piece);
+    }
+  }
 
   element.append(ts, text);
   return element;

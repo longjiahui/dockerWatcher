@@ -48,8 +48,9 @@ curl http://127.0.0.1:9223/json/list        # 取页面目标的 webSocketDebugg
 | `src-tauri/tauri.conf.json` | 窗口配置：`label=main`、无边框、置顶、`skipTaskbar`、可缩放 |
 | `src-tauri/capabilities/default.json` | 前端所需的窗口权限（`start-dragging` / `hide` / `show` / `close`） |
 | `src/types.ts` | 前后端契约类型、`localStorage` 键与分页档位 |
-| `src/store.ts` | 容器列表状态、事件归约、快照合并、持久化 |
-| `src/ui.ts` | 行与日志的 DOM 渲染（含日志区标题文案） |
+| `src/store.ts` | 容器列表状态、事件归约、快照合并与重启对账、持久化 |
+| `src/ansi.ts` | 日志里 ANSI 转义序列的解析（纯文本处理，不碰 DOM） |
+| `src/ui.ts` | 行与日志的 DOM 渲染（含日志区标题文案、ANSI 样式落盘） |
 | `src/main.ts` | IPC 接线、日志分页加载、上滚锚定 |
 
 ## 前后端契约
@@ -103,6 +104,14 @@ type DockerStatus  = { connected: boolean; error: string | null };
    到达（顺序不定），`ui.ts` 的 `logsHeaderText` 对此做了处理，改动时别退回去。
 10. **持久化**：键 `dockerwather.state.v1`，单容器最多 2000 行、写入 debounce 300ms、超配额按
     最旧优先丢弃日志；`expanded` 不持久化（每次启动都收起）；`logsError` 不持久化。
+11. **日志文本原样保存，颜色在渲染层还原**：容器输出里的 ANSI 转义序列（`src/ansi.ts`）只在
+    `ui.ts` 渲染时解析成 span，`localStorage` 里留原始文本，所以改渲染策略不用重新拉日志；
+    顺手把 `\r` 折叠成终端实际显示的那一段、把非 SGR 的转义（`ESC[2K` 等）丢掉。没有转义的行
+    必须走单文本节点的快路径，否则每行多一个 span 节点。
+12. **重启对账只在快照成功时做**：`store.ts` 的 `applySnapshot` 会把「快照里没有的 id」标记为
+    已删除（快照是 `all=true`，已停止但仍存在的容器也在里面，所以差集就等于已删除）。因此
+    **绝不能把失败的快照传给它**——拿不到列表会被当成「所有容器都没了」。已知局限：切换
+    Docker context / 连到另一个引擎时，旧引擎的条目会被全部标成已删除。
 
 ## 验证
 

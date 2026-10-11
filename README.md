@@ -55,6 +55,9 @@ The window opens right away and the tray icon appears with it.
 - Scroll to the top of the log pane to load earlier lines: it steps 50 → 200 → 1000 → all and
   keeps the view still. Once everything is loaded it says 已到最顶端 and stops asking.
 - `stdout` and `stderr` are colour-coded, and the timestamps come from Docker.
+- Colour codes the program itself wrote (ANSI escapes) are rendered as colours rather than
+  shown as `[0m[32m` noise, and a line that repaints itself with `\r` is reduced to what a
+  terminal would end up showing.
 - When logs cannot be read — a container that was removed before the app was watching it — the
   pane says so instead of pretending to be empty.
 
@@ -63,3 +66,7 @@ The window opens right away and the tray icon appears with it.
 The list, the deleted markers and the cached logs are stored on your machine, so closing the
 window, restarting the app or rebooting keeps your history. Containers always come back
 collapsed.
+
+Containers that were removed while the app was not running are detected on the next start: the
+list is reconciled against the containers Docker still knows about, and anything missing is
+marked as deleted with its last cached logs kept.

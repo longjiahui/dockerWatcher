@@ -92,9 +92,23 @@ function applyInfo(container: Container, info: ContainerInfo): void {
   container.status = info.status || container.status;
 }
 
+/**
+ * Merge the engine's snapshot into the list, then reconcile the other direction.
+ *
+ * The snapshot is requested with `all=true`, so it lists every container that still exists —
+ * stopped ones included. A container Docker no longer reports has therefore been removed,
+ * which is the only way to learn about a removal that happened while the app was not
+ * running to receive its `destroy` event.
+ *
+ * Callers must only reach this with a snapshot that actually succeeded: a failed request
+ * looks exactly like "every container is gone".
+ */
 export function applySnapshot(infos: readonly ContainerInfo[]): void {
+  const present = new Set<string>();
+
   for (const info of infos) {
     if (!info.id) continue;
+    present.add(info.id);
     const existing = findById(info.id);
     if (existing) {
       applyInfo(existing, info);
@@ -104,6 +118,17 @@ export function applySnapshot(infos: readonly ContainerInfo[]): void {
       applyInfo(container, info);
       insert(container, "bottom");
     }
+  }
+
+  for (const container of containers) {
+    // Already marked, or still there: either way there is nothing to reconcile, and the
+    // cached logs of a removed container are the only record of it left.
+    if (container.deleted || present.has(container.id)) continue;
+    container.deleted = true;
+    container.state = "removed";
+    container.status = "已删除";
+    container.lastAction = "destroy";
+    touch(container);
   }
 }
 
