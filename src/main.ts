@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { ask } from "@tauri-apps/plugin-dialog";
 
 import * as store from "./store";
 import * as ui from "./ui";
@@ -172,10 +173,30 @@ function onLogScroll(id: string, body: HTMLElement): void {
   void loadLogs(container, tail, { scrollHeight: body.scrollHeight, scrollTop: body.scrollTop });
 }
 
+const CLEAR_PROMPT = "确定清空所有容器记录与日志吗？";
+
+/** A native message box on top of the always-on-top window, not the webview's own prompt. */
+async function confirmClear(): Promise<boolean> {
+  try {
+    return await ask(CLEAR_PROMPT, {
+      title: "Docker Watcher",
+      kind: "warning",
+      okLabel: "清空",
+      cancelLabel: "取消",
+    });
+  } catch (error) {
+    // The plugin is the only way this can fail; keep the button working regardless.
+    console.error("系统弹窗不可用，回退到内置确认框", error);
+    return window.confirm(CLEAR_PROMPT);
+  }
+}
+
 function onClear(): void {
-  if (!window.confirm("确定清空所有容器记录与日志吗？")) return;
-  store.clearAll();
-  ui.hideBanner();
+  void confirmClear().then((confirmed) => {
+    if (!confirmed) return;
+    store.clearAll();
+    ui.hideBanner();
+  });
 }
 
 function onClose(): void {

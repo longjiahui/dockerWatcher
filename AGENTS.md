@@ -34,9 +34,17 @@ TypeScript，无框架）渲染一个无边框置顶悬浮窗，常驻系统托�
 （不需要动鼠标，适合在真实窗口里做交互验证）：
 
 ```bash
+WEBVIEW2_USER_DATA_FOLDER="C:\Users\<你>\AppData\Local\Temp\dwdev-profile" \
 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9223" npm run tauri dev
 curl http://127.0.0.1:9223/json/list        # 取页面目标的 webSocketDebuggerUrl
 ```
+
+> **同一个 identifier 只能有一个实例在跑**：WebView2 对同一个用户数据目录
+> （`%LOCALAPPDATA%\com.longj.dockerwather\EBWebView`）只允许一个浏览器进程，所以如果你已经
+> 装了打包版并从开始菜单启动了它，再跑 `npm run tauri dev` 会直接 panic
+> （`WebView2 error: WindowsError(0x8007139F)` 或 `0x800700AA "请求的资源在使用中"`），
+> 看起来像"随机起不来"。两种解法：先退出已装的实例（托盘菜单「退出」），或者像上面那样用
+> `WEBVIEW2_USER_DATA_FOLDER` 给 dev 一个独立 profile（代价是 dev 看不到正式版的历史记录）。
 
 ## 代码结构
 
@@ -44,14 +52,14 @@ curl http://127.0.0.1:9223/json/list        # 取页面目标的 webSocketDebugg
 | --- | --- |
 | `src-tauri/src/docker.rs` | Docker Engine 事件流、每容器跟随日志的有界缓冲、三个命令的实现 |
 | `src-tauri/src/tray.rs` | 托盘图标与右键菜单、窗口显示/隐藏切换 |
-| `src-tauri/src/lib.rs` | 状态管理、命令注册、`CloseRequested` → 隐藏窗口 |
+| `src-tauri/src/lib.rs` | 状态管理、命令注册、`CloseRequested` → 隐藏窗口、dialog 插件注册 |
 | `src-tauri/tauri.conf.json` | 窗口配置：`label=main`、无边框、置顶、`skipTaskbar`、可缩放 |
-| `src-tauri/capabilities/default.json` | 前端所需的窗口权限（`start-dragging` / `hide` / `show` / `close`） |
+| `src-tauri/capabilities/default.json` | 前端所需的权限（窗口 `start-dragging`/`hide`/`show`/`close`、`dialog:default`） |
 | `src/types.ts` | 前后端契约类型、`localStorage` 键与分页档位 |
 | `src/store.ts` | 容器列表状态、事件归约、快照合并与重启对账、持久化 |
 | `src/ansi.ts` | 日志里 ANSI 转义序列的解析（纯文本处理，不碰 DOM） |
 | `src/ui.ts` | 行与日志的 DOM 渲染（含日志区标题文案、ANSI 样式落盘） |
-| `src/main.ts` | IPC 接线、日志分页加载、上滚锚定 |
+| `src/main.ts` | IPC 接线、日志分页加载、上滚锚定、清空的系统确认框 |
 
 ## 前后端契约
 
@@ -112,6 +120,10 @@ type DockerStatus  = { connected: boolean; error: string | null };
     已删除（快照是 `all=true`，已停止但仍存在的容器也在里面，所以差集就等于已删除）。因此
     **绝不能把失败的快照传给它**——拿不到列表会被当成「所有容器都没了」。已知局限：切换
     Docker context / 连到另一个引擎时，旧引擎的条目会被全部标成已删除。
+13. **清空的确认框走系统弹窗**：`main.ts` 用 `@tauri-apps/plugin-dialog` 的 `ask()`（Windows 上
+    是原生 TaskDialog，`#32770`，被主窗口 owner 所以不会被置顶窗口盖住），不要再退回
+    `window.confirm`——那是 webview 自己的弹窗，在无边框窗口里样式不搭。插件失败时已回退到
+    `window.confirm`。新增权限的同时别忘了 `capabilities/default.json` 里的 `dialog:default`。
 
 ## 验证
 
@@ -123,4 +135,8 @@ type DockerStatus  = { connected: boolean; error: string | null };
   列表应新增条目且不重复；展开应默认 50 行、向上滚动依次 200 / 1000 / 全部，最终显示
   「已到最顶端 · 共 300 行」；`docker rm -f dw-test` 后条目只被标记为「已删除」且日志仍在。
 - 关闭窗口后进程应继续存活（托盘常驻），托盘左键应能切换窗口显示。
+- 清空的确认框要能验证「取消不清、确认才清」：它是原生 TaskDialog，程序化点击用
+  `SendMessage(hwnd, TDM_CLICK_BUTTON, 1 /*OK*/, 0)` / `2 /*Cancel*/`（0x0466），
+  按钮是 DirectUI 绘制的、没有独立子窗口，所以 `BM_CLICK` 和 UIA 的 Invoke 都用不上；
+  窗口本身可以按类名 `#32770` 捞出来。
 - 提交前跑：`npx tsc --noEmit`、`npm run build`、`cd src-tauri && cargo build`。

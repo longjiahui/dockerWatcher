@@ -57,6 +57,7 @@ async fn get_docker_status(state: tauri::State<'_, DockerState>) -> Result<Docke
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(DockerState::default())
         .setup(|app| {
             tray::build(app)?;
