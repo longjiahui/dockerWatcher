@@ -1,0 +1,407 @@
+:root {
+  color-scheme: dark;
+  --bg: #1b1d21;
+  --bg-bar: #24272c;
+  --bg-logs: #15171a;
+  --border: #2c3037;
+  --border-soft: #34383f;
+  --fg: #d7dae0;
+  --fg-dim: #8a919b;
+  --fg-faint: #6c737d;
+  --accent: #5aa9e6;
+  --green: #45c46a;
+  --red: #e05c56;
+  --amber: #d8a13c;
+  --stderr: #e0968c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", Roboto, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The root stays square on purpose: Windows paints white behind the webview,
+   so rounded corners here would show white notches. */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ---------- title bar ---------- */
+
+#titlebar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  background: var(--bg-bar);
+  border-bottom: 1px solid var(--border);
+}
+
+#titlebar .title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #c2c7ce;
+  white-space: nowrap;
+}
+
+#titlebar .count {
+  font-size: 10px;
+  color: var(--fg-faint);
+  white-space: nowrap;
+}
+
+#titlebar .drag-fill {
+  flex: 1 1 auto;
+  align-self: stretch;
+}
+
+.docker-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.docker-dot.online {
+  background: var(--green);
+  box-shadow: 0 0 5px rgba(69, 196, 106, 0.6);
+}
+
+.docker-dot.offline {
+  background: var(--red);
+  box-shadow: 0 0 5px rgba(224, 92, 86, 0.6);
+}
+
+.bar-btn {
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-dim);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.bar-btn:hover {
+  background: #32363d;
+  color: var(--fg);
+}
+
+.bar-btn.close {
+  width: 22px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.bar-btn.close:hover {
+  background: #4a2523;
+  color: #ffb4ae;
+}
+
+/* ---------- banners ---------- */
+
+.banner,
+.docker-error {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.banner {
+  background: #3a2f17;
+  color: #e9c179;
+  cursor: pointer;
+}
+
+.docker-error {
+  background: #331f1e;
+  color: #e79a94;
+  overflow-wrap: anywhere;
+}
+
+.banner[hidden],
+.docker-error[hidden] {
+  display: none;
+}
+
+/* ---------- list ---------- */
+
+.list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--fg-faint);
+}
+
+.empty[hidden] {
+  display: none;
+}
+
+.row {
+  border-bottom: 1px solid var(--border);
+}
+
+.row-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.row-head:hover {
+  background: #212429;
+}
+
+.row.expanded .row-head {
+  background: #212429;
+}
+
+.dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.dot.state-running {
+  background: var(--green);
+}
+
+.dot.state-warn {
+  background: var(--amber);
+}
+
+.dot.state-dead {
+  background: var(--red);
+}
+
+.dot.state-idle {
+  background: #6a7078;
+}
+
+.dot.state-deleted {
+  background: #4b5057;
+}
+
+.row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.name-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  color: #e4e7eb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border: 1px solid #4b5057;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #9aa1a9;
+}
+
+.badge[hidden] {
+  display: none;
+}
+
+.image {
+  color: var(--fg-faint);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-meta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 42%;
+}
+
+.status {
+  color: var(--fg-dim);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  font-size: 10px;
+  transition: transform 0.12s ease;
+}
+
+.row.expanded .chevron {
+  transform: rotate(90deg);
+}
+
+.row.deleted .name {
+  text-decoration: line-through;
+  color: #8d939b;
+}
+
+.row.deleted .image,
+.row.deleted .status {
+  color: #5f656d;
+}
+
+.row.loading .dot {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ---------- logs ---------- */
+
+.logs {
+  display: none;
+  background: var(--bg-logs);
+  border-top: 1px solid var(--border-soft);
+}
+
+.row.expanded .logs {
+  display: block;
+}
+
+.logs-head {
+  padding: 3px 9px;
+  font-size: 10px;
+  color: var(--fg-faint);
+}
+
+.logs-head.error {
+  color: #e79a94;
+}
+
+.logs-body {
+  max-height: 240px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 2px 0 4px;
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #b9bec6;
+  user-select: text;
+  cursor: text;
+}
+
+.log-line {
+  display: flex;
+  gap: 6px;
+  padding: 0 9px;
+}
+
+.log-ts {
+  flex: 0 0 auto;
+  color: #5f656d;
+}
+
+.log-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.log-line.stderr .log-text {
+  color: var(--stderr);
+}
+
+.log-line.stderr .log-ts {
+  color: #8a5f59;
+}
+
+.log-line.stdin .log-text {
+  color: #9fb3c8;
+}
+
+/* ---------- scrollbars ---------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a3f47;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4d545d;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
